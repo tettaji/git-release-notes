@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!/usr/bin/env node
 var argv = require("optimist").usage("git-release-notes [<options>] <since>..<until> <template>")
 .options("f", {
@@ -45,56 +46,38 @@ var argv = require("optimist").usage("git-release-notes [<options>] <since>..<un
 })
 .argv;
 
+=======
+>>>>>>> 46c40382bd3e6b053dd0c556edb2750141dde162
 var git = require("./lib/git");
-var fs = require("fs");
 var ejs = require("ejs");
-var path = require("path");
 var debug = require("debug")("release-notes:cli");
-var debugData = require("debug")("release-notes:data");
-var dateFnsFormat = require('date-fns/format')
+var fileSystem = require('./lib/file-system');
+var processCommits = require('./lib/process').processCommits;
+var dateFnsFormat = require('date-fns/format');
 
-var template = argv._[1];
-debug("Trying to locate template '%s'", template);
-if (!fs.existsSync(template)) {
-	debug("Template file '%s' doesn't exist, maybe it's template name", template);
-	// Template name?
-	if (template.match(/[a-z]+(\.ejs)?/)) {
-		template = path.resolve(__dirname, "./templates/" + path.basename(template, ".ejs") + ".ejs");
-	} else {
-		require("optimist").showHelp();
-		console.error("\nUnable to locate template file " + template);
-		process.exit(1);
-	}
-}
-
-debug("Trying to locate script '%s'", argv.s);
-if (argv.s && !fs.existsSync(argv.s)) {
-	debug("Script file '%s' doesn't exist");
-	require("optimist").showHelp();
-	console.error("\nExternal script must be a valid path " + argv.s);
-	process.exit(1);
-}
-
-debug("Trying to read template '%s'", template);
-fs.readFile(template, function (err, templateContent) {
-	if (err) {
-		require("optimist").showHelp();
-		console.error("\nUnable to locate template file " + argv._[1]);
-		process.exit(5);
-	} else {
-		getOptions(function (options) {
-			debug("Running git log in '%s' on branch '%s' with range '%s'", options.p, options.b, argv._[0]);
-			git.log({
+module.exports = function module(cliOptions, positionalRange, positionalTemplate) {
+	return fileSystem.resolveTemplate(positionalTemplate).then(function (template) {
+		return fileSystem.resolveOptions(cliOptions).then(function (options) {
+			debug("Running git log in '%s' on branch '%s' with range '%s'", options.p, options.b, positionalRange);
+			return git.log({
 				branch: options.b,
+<<<<<<< HEAD
 				range: argv._[0],
+=======
+				range: positionalRange,
+>>>>>>> 46c40382bd3e6b053dd0c556edb2750141dde162
 				title: options.i ? new RegExp(options.t, 'i') : new RegExp(options.t),
 				meaning: Array.isArray(options.m) ? options.m: [options.m],
 				cwd: options.p,
-				mergeCommits: options.c
-			}, function (commits) {
-				postProcess(templateContent, commits);
+				mergeCommits: options.c,
+				additionalOptions: Array.isArray(options.o) ? options.o : [options.o]
+			}).then(function (commits) {
+				return processCommits(options, commits, positionalRange);
+			}).then(function (data) {
+				return render(positionalRange, template, data);
 			});
 		});
+<<<<<<< HEAD
 	}
 });
 
@@ -172,12 +155,15 @@ function postProcess(templateContent, commits) {
 		process.exit(6);
 	}
 }
+=======
+	});
+};
+>>>>>>> 46c40382bd3e6b053dd0c556edb2750141dde162
 
-function render(templateContent, data) {
+function render(range, templateContent, data) {
 	debug("Rendering template");
-	var output = ejs.render(templateContent.toString(), Object.assign({
-		range: argv._[0],
+	return ejs.render(templateContent, Object.assign({
+		range: range,
 		dateFnsFormat: dateFnsFormat
 	}, data));
-	process.stdout.write(output + "\n");
 }
